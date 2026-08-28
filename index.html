@@ -163,6 +163,21 @@
   .setup b { font-weight: 600; }
   .setup p { margin: 0; font-size: 13px; line-height: 1.65; }
 
+  .savebar {
+    position: sticky; bottom: 0; z-index: 8; margin: 0 -20px -90px; padding: 12px 20px 16px;
+    display: flex; align-items: center; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
+    background: linear-gradient(to top, var(--ground) 62%, transparent);
+  }
+  .savenote { font-size: 12.5px; color: var(--muted); }
+  .savenote.dirty { color: var(--hold); font-weight: 600; }
+  .savebtn {
+    font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 8px; padding: 10px 22px; cursor: default;
+    box-shadow: var(--shadow); transition: background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .savebtn.on { color: var(--on-accent); background: var(--edit); border-color: var(--edit); cursor: pointer; }
+  .savebtn.on:hover { filter: brightness(1.08); }
+
   .foot { font-size: 12.5px; color: var(--muted); line-height: 1.7; }
   .foot b { color: var(--ink); font-weight: 600; }
 
@@ -174,9 +189,12 @@
   }
   .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  @media (max-width: 640px) { .wrap { padding: 24px 14px 80px; gap: 20px; } }
+  @media (max-width: 640px) {
+    .wrap { padding: 24px 14px 80px; gap: 20px; }
+    .savebar { margin: 0 -14px -80px; padding: 12px 14px 14px; }
+  }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  @media print { .rowfoot, .xbtn, .sync, .setup { display: none !important; } body { background: #fff; } section, .timeline, .key { box-shadow: none; break-inside: avoid; } }
+  @media print { .rowfoot, .xbtn, .sync, .setup, .savebar { display: none !important; } body { background: #fff; } section, .timeline, .key { box-shadow: none; break-inside: avoid; } }
 </style>
 </head>
 <body>
@@ -253,7 +271,12 @@
 
   <div class="foot">
     <b>쓰는 법</b> — 책 제목과 편집 시작일만 넣으면 나머지 날짜가 자동으로 계산돼요. 편집 완료일이나 출간 예정일을 직접 고르면 그 뒤 일정이 함께 밀립니다. 홍보는 시작일만 고르면 완료일이 7일 뒤로 잡혀요.<br>
-    <b>같이 고치기</b> — 저장 버튼이 없습니다. 고치면 곧바로 저장되고, 이 링크를 열어둔 모든 사람 화면에 몇 초 안에 그대로 반영됩니다. 오른쪽 위에 이름을 적어두면 누가 마지막에 고쳤는지 서로 보여요.
+    <b>같이 고치기</b> — 고치면 자동으로 저장되고, 이 링크를 열어둔 모든 사람 화면에 몇 초 안에 그대로 반영됩니다. 바로 넘기고 싶을 때는 아래 [저장] 버튼을 누르세요. 오른쪽 위에 이름을 적어두면 누가 마지막에 고쳤는지 서로 보여요.
+  </div>
+
+  <div class="savebar">
+    <span class="savenote" id="savenote">고치면 자동으로 저장돼요</span>
+    <button class="savebtn" id="savebtn" type="button">저장됨</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -715,19 +738,51 @@ setInterval(showLastEditor, 30000);
 /* ---------- 바뀔 때마다 저장 ---------- */
 var saveTimer = null;
 var lastInputAt = 0;
+var unsaved = false;
+
+var saveBtn = document.getElementById("savebtn");
+var saveNote = document.getElementById("savenote");
+
+function setSaveButton(state, note) {
+  // state: "clean" | "dirty" | "saving"
+  unsaved = (state === "dirty");
+  saveBtn.classList.toggle("on", state === "dirty");
+  saveBtn.textContent = state === "saving" ? "저장 중…" : (state === "dirty" ? "저장" : "저장됨");
+  saveNote.textContent = note;
+  saveNote.classList.toggle("dirty", state === "dirty");
+}
+
+function doSave() {
+  clearTimeout(saveTimer);
+  if (!remote) { saveLocal(); setSaveButton("clean", "이 브라우저에만 저장됨"); return; }
+  setSaveButton("saving", "");
+  setSync("live", "저장 중…");
+  myRev = String(Date.now()) + "." + Math.random().toString(36).slice(2, 8);
+  lastEditor = { by: myName || "누군가", at: Date.now() };
+  remote.save({ rev: myRev, by: lastEditor.by, at: lastEditor.at, data: S })
+    .then(function () {
+      setSaveButton("clean", "모두에게 전달됐어요");
+      showLastEditor();
+    })
+    .catch(function () {
+      setSaveButton("dirty", "저장 실패 — 인터넷 연결을 확인하고 다시 눌러주세요");
+      setSync("off", "저장 실패");
+    });
+}
+
 function changed() {
   lastInputAt = Date.now();
-  if (!remote) { saveLocal(); return; }
-  setSync("live", "저장 중…");
+  if (!remote) { saveLocal(); setSaveButton("clean", "이 브라우저에만 저장됨"); return; }
+  setSaveButton("dirty", "저장하지 않은 변경사항");
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(function () {
-    myRev = String(Date.now()) + "." + Math.random().toString(36).slice(2, 8);
-    lastEditor = { by: myName || "누군가", at: Date.now() };
-    remote.save({ rev: myRev, by: lastEditor.by, at: lastEditor.at, data: S })
-      .then(function () { showLastEditor(); })
-      .catch(function () { setSync("off", "저장 실패 — 인터넷 연결을 확인하세요"); });
-  }, 700);
+  saveTimer = setTimeout(doSave, 1500);
 }
+
+saveBtn.addEventListener("click", function () { if (unsaved) doSave(); });
+
+window.addEventListener("beforeunload", function (e) {
+  if (unsaved) { e.preventDefault(); e.returnValue = ""; }
+});
 function saveLocal() {
   try { localStorage.setItem("bookplan-local", JSON.stringify(S)); } catch (e) {}
   setSync("off", "이 브라우저에만 저장됨");
@@ -749,6 +804,7 @@ function applyRemote(payload) {
   renderEdit(); renderPromo(); stats();
   lastEditor = { by: payload.by || "누군가", at: payload.at || Date.now() };
   showLastEditor();
+  if (typeof setSaveButton === "function") setSaveButton("clean", "고치면 자동으로 저장돼요");
   if (payload.by && payload.by !== myName) toast(payload.by + "님이 방금 수정했어요");
 }
 document.addEventListener("focusout", function () {
