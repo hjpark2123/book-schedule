@@ -160,11 +160,11 @@
   .cal-list .row .k { color: var(--muted); font-size: 12px; }
   .cal-list .empty { font-size: 13px; color: var(--muted); }
 
-  @media (max-width: 700px) {
-    .cal .day { min-height: 58px; }
-    .chip .t, .chip em { display: none; }
-    .chip { justify-content: center; padding: 3px; }
-  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media print { .rowfoot, .xbtn, .sync, .setup, .savebar { display: none !important; } body { background: #fff; } section, .timeline, .key { box-shadow: none; break-inside: avoid; } }
+
+
+
 
   section { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
   .sec-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
@@ -271,8 +271,68 @@
     .wrap { padding: 24px 14px 80px; gap: 20px; }
     .savebar { margin: 0 -14px -80px; padding: 12px 14px 14px; }
   }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-  @media print { .rowfoot, .xbtn, .sync, .setup, .savebar { display: none !important; } body { background: #fff; } section, .timeline, .key { box-shadow: none; break-inside: avoid; } }
+  @media (max-width: 700px) {
+    .cal .day { min-height: 52px; padding: 4px 3px; }
+    .chip .t, .chip em { display: none; }
+    .chip { justify-content: center; padding: 3px; border-left-width: 0; }
+    .cal-legend { padding: 12px 14px 2px; }
+    .cal-list { padding: 10px 14px 14px; }
+    .cal-list .row .d { min-width: 78px; font-size: 12.5px; }
+    .cal-nav .m { min-width: 92px; font-size: 13px; }
+
+    /* 표를 줄 단위 카드로 */
+    .tablewrap { overflow-x: visible; }
+    table { min-width: 0; display: block; }
+    thead { display: none; }
+    tbody { display: block; }
+    tbody tr {
+      display: block; position: relative; background: var(--surface);
+      border: 1px solid var(--line); border-radius: 10px;
+      margin: 10px 12px; padding: 9px 11px 11px;
+    }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody td,
+    tbody td.c-name, tbody td.c-date, tbody td.c-end, tbody td.c-off,
+    tbody td.c-st, tbody td.c-memo, tbody td.c-url, tbody td.c-drag, tbody td.c-x {
+      display: flex; align-items: center; gap: 10px; border: 0; padding: 3px 0; width: auto;
+    }
+    tbody td::before {
+      content: attr(data-label); flex: none; width: 68px;
+      font-size: 11.5px; font-weight: 600; color: var(--muted);
+    }
+    tbody td.c-name { padding: 0 66px 7px 0; display: block; }
+    tbody td.c-name::before { display: none; }
+    tbody td.c-name input {
+      font-size: 15.5px; font-weight: 600; padding: 3px 0;
+      border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    }
+    tbody td.c-drag, tbody td.c-x { position: absolute; top: 7px; padding: 0; width: auto; }
+    tbody td.c-drag { right: 36px; }
+    tbody td.c-x { right: 6px; }
+    tbody td.c-drag::before, tbody td.c-x::before { display: none; }
+    .drag { padding: 6px 8px; font-size: 17px; }
+    td.c-off, td.c-end { padding-left: 0; }
+    td input[type="date"], td select, td input[type="text"], td input[type="url"] { border-color: var(--line); }
+    td input, td select { width: auto; }
+    td input[type="date"] { flex: 0 0 150px; }
+    td input[type="text"], td input[type="url"] { flex: 1 1 auto; min-width: 0; }
+    td .urlcell { flex: 1 1 auto; min-width: 0; }
+    select.st { flex: 0 0 84px; }
+    td.c-off, td.c-end { font-size: 13px; }
+    .rowfoot { padding: 4px 12px 12px; }
+    tr.dragging { box-shadow: 0 6px 18px -8px rgba(0,0,0,.4); }
+  }
+
+  @media (max-width: 640px) {
+    .keys { grid-template-columns: repeat(auto-fit, minmax(152px, 1fr)); gap: 9px; }
+    .key { padding: 11px 12px; gap: 5px; }
+    .key input[type="date"] { font-size: 14.5px; padding: 5px 6px; }
+    .key .k { font-size: 11.5px; }
+    .key .sub { font-size: 11px; }
+    .sec-head { padding: 13px 14px; }
+    .sec-head h2 { font-size: 17px; }
+    .grp-head { padding: 12px 14px 6px; }
+  }
 </style>
 </head>
 <body>
@@ -608,15 +668,16 @@ function delCell(onDel) {
   td.appendChild(b);
   return td;
 }
+function lab(td, text) { td.dataset.label = text; return td; }
 function editRow(row) {
   var tr = el("tr");
   tr._item = row;
   tr.appendChild(dragCell(tr, S.edit, function () { return page * PAGE; }, renderEdit));
-  tr.appendChild(textCell(row, "n", "단계 이름", "c-name"));
-  tr.appendChild(dateCell(row, "start", tr));
-  tr.appendChild(offCell(row, "start"));
-  tr.appendChild(statusCell(row, tr));
-  tr.appendChild(textCell(row, "m", "—", "c-memo"));
+  tr.appendChild(lab(textCell(row, "n", "단계 이름", "c-name"), "단계"));
+  tr.appendChild(lab(dateCell(row, "start", tr), "완료일"));
+  tr.appendChild(lab(offCell(row, "start"), "기준"));
+  tr.appendChild(lab(statusCell(row, tr), "상태"));
+  tr.appendChild(lab(textCell(row, "m", "—", "c-memo"), "메모"));
   tr.appendChild(delCell(function () {
     var i = S.edit.indexOf(row);
     if (i > -1) S.edit.splice(i, 1);
@@ -643,14 +704,14 @@ function promoRow(row, list, isG) {
   var tr = el("tr");
   tr._item = row;
   tr.appendChild(dragCell(tr, list, function () { return 0; }, renderPromo));
-  tr.appendChild(textCell(row, "n", isG ? "인플루언서 · 채널명" : "할 일", "c-name"));
-  if (isG) tr.appendChild(linkCell(row));          // 공구는 이름 바로 옆에
-  tr.appendChild(dateCell(row, "pub", tr));
-  tr.appendChild(endCell(row, "pub"));
-  tr.appendChild(offCell(row, "pub"));
-  tr.appendChild(statusCell(row, tr));
-  tr.appendChild(textCell(row, "m", isG ? "수량 · 조건 등" : "—", "c-memo"));
-  if (!isG) tr.appendChild(linkCell(row));         // 나머지는 메모 뒤에
+  tr.appendChild(lab(textCell(row, "n", isG ? "인플루언서 · 채널명" : "할 일", "c-name"), isG ? "인플루언서" : "할 일"));
+  if (isG) tr.appendChild(lab(linkCell(row), "채널 링크"));          // 공구는 이름 바로 옆에
+  tr.appendChild(lab(dateCell(row, "pub", tr), isG ? "공구 시작" : "시작일"));
+  tr.appendChild(lab(endCell(row, "pub"), isG ? "공구 종료" : "완료일"));
+  tr.appendChild(lab(offCell(row, "pub"), "기준"));
+  tr.appendChild(lab(statusCell(row, tr), "상태"));
+  tr.appendChild(lab(textCell(row, "m", isG ? "수량 · 조건 등" : "—", "c-memo"), "메모"));
+  if (!isG) tr.appendChild(lab(linkCell(row), "링크"));         // 나머지는 메모 뒤에
   tr.appendChild(delCell(function () {
     var i = list.indexOf(row);
     if (i > -1) list.splice(i, 1);
@@ -1320,6 +1381,6 @@ renderCalendar();
   }
 })();
 </script>
-<!-- rev: 2026-08-28 전체 달력 -->
+<!-- rev: 2026-08-28 모바일 정리 -->
 </body>
 </html>
