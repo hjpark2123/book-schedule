@@ -615,7 +615,7 @@ function stats() {
   var wh = whRow();
   document.getElementById("s-whsub").textContent = (wh && s)
     ? (wh.d === S.pubOff ? "출간일과 같은 날" : wh.d < S.pubOff ? "출간 " + (S.pubOff - wh.d) + "일 전" : "출간 " + (wh.d - S.pubOff) + "일 후") + " · " + wh.n
-    : "편집 일정에 입고 단계를 추가하세요";
+    : "날짜를 고르면 단계가 자동으로 추가돼요";
   document.getElementById("s-pubsub").textContent = s ? "편집 시작 D+" + S.pubOff + " · " + ko(p) : "";
 
   var rows = allRows();
@@ -633,7 +633,6 @@ function refreshKeys() {
   fOk.value = (s && ok) ? iso(add(s, ok.d)) : "";
   fOk.disabled = !ok;
   fWh.value = (s && wh) ? iso(add(s, wh.d)) : "";
-  fWh.disabled = !wh;
   fPub.value = s ? iso(pubDate()) : "";
 }
 function timeline() {
@@ -707,9 +706,18 @@ fOk.addEventListener("change", function () {
   renderEdit(); syncAll(); stats(); changed();
 });
 fWh.addEventListener("change", function () {
-  var st = startDate(), wh = whRow(), picked = parse(fWh.value);
-  if (!st || !wh || !picked) { refreshKeys(); return; }
-  wh.d = diff(picked, st);
+  var st = startDate(), picked = parse(fWh.value);
+  if (!st || !picked) { refreshKeys(); return; }
+  var d = diff(picked, st), wh = whRow();
+  if (wh) {
+    wh.d = d;
+  } else {                                  // 단계가 없으면 새로 만들어 순서에 맞게 끼워 넣는다
+    wh = { n: "창고 입고", d: d, st: "진행", m: "", k: "wh" };
+    var at = S.edit.length;
+    for (var i = 0; i < S.edit.length; i++) { if (S.edit[i].d > d) { at = i; break; } }
+    S.edit.splice(at, 0, wh);
+    page = Math.floor(at / PAGE);
+  }
   renderEdit(); syncAll(); stats(); changed();
 });
 fPub.addEventListener("change", function () {
