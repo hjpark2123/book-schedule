@@ -52,6 +52,28 @@
     border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; width: 108px;
   }
 
+  .tabs {
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 14px;
+  }
+  .tab {
+    font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 99px;
+    padding: 7px 14px; cursor: pointer; max-width: 260px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 7px;
+  }
+  .tab:hover { border-color: var(--line-strong); color: var(--ink); }
+  .tab.on { background: var(--edit); border-color: var(--edit); color: var(--on-accent); }
+  .tab .close {
+    font-size: 15px; line-height: 1; opacity: .65; margin-right: -4px; padding: 0 2px; border-radius: 4px;
+  }
+  .tab .close:hover { opacity: 1; }
+  .tab.arm { background: var(--promo); border-color: var(--promo); color: var(--on-accent); }
+  .tab-add {
+    font: inherit; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer;
+    background: transparent; border: 1px dashed var(--line-strong); border-radius: 99px; padding: 7px 14px;
+  }
+  .tab-add:hover { color: var(--edit); border-color: var(--edit); }
+
   .titlefield {
     font-family: var(--serif); font-size: clamp(28px, 5vw, 42px); font-weight: 700;
     line-height: 1.25; color: var(--ink); background: transparent; border: 0;
@@ -207,6 +229,7 @@
         <input class="whoami" id="whoami" type="text" placeholder="내 이름" autocomplete="off" maxlength="12">
       </div>
     </div>
+    <div class="tabs" id="tabs"></div>
     <input class="titlefield" id="f-title" type="text" placeholder="책 제목을 입력하세요" autocomplete="off">
   </header>
 
@@ -279,7 +302,8 @@
 
   <div class="foot">
     <b>쓰는 법</b> — 책 제목과 편집 시작일만 넣으면 나머지 날짜가 자동으로 계산돼요. 편집 완료일 · 창고 입고일 · 배본일은 서로 상관없이 각각 고르시면 됩니다. 홍보는 시작일만 고르면 완료일이 7일 뒤로 잡혀요.<br>
-    <b>같이 고치기</b> — 고치면 자동으로 저장되고, 이 링크를 열어둔 모든 사람 화면에 몇 초 안에 그대로 반영됩니다. 바로 넘기고 싶을 때는 아래 [저장] 버튼을 누르세요. 오른쪽 위에 이름을 적어두면 누가 마지막에 고쳤는지 서로 보여요.
+    <b>같이 고치기</b> — 고치면 자동으로 저장되고, 이 링크를 열어둔 모든 사람 화면에 몇 초 안에 그대로 반영됩니다. 바로 넘기고 싶을 때는 아래 [저장] 버튼을 누르세요. 오른쪽 위에 이름을 적어두면 누가 마지막에 고쳤는지 서로 보여요.<br>
+    <b>여러 권 같이</b> — 위쪽 탭으로 책을 넘나듭니다. [+ 책 추가]로 새 책을 만들면 모두에게 같은 탭이 생겨요. 탭은 사람마다 따로 열려 있어서, 내가 보는 책이 남 때문에 바뀌지 않습니다.
   </div>
 
   <div class="savebar">
@@ -340,12 +364,14 @@ var DEFAULT_STATE = {
 <script type="module">
 "use strict";
 
-var S = JSON.parse(JSON.stringify(DEFAULT_STATE));
+var S = JSON.parse(JSON.stringify(DEFAULT_STATE));   // 지금 보고 있는 책의 일정
+var BOOKS = {};             // id -> { rev, by, at, created, data }
+var activeId = null;        // 지금 보고 있는 책 (사람마다 따로)
+var myRevs = {};            // 내가 마지막으로 쓴 버전 (메아리 무시용)
 var SPAN = 7, PAGE = 5, page = 0;
 var myName = "";
-var remote = null;          // { save(state), }
-var myRev = null;           // 내가 마지막으로 쓴 버전 표시(메아리 무시용)
-var pendingRemote = null;   // 입력 중에 도착한 남의 수정
+var remote = null;
+var pendingBooks = null;    // 입력 중에 도착한 남의 수정
 var lastEditor = null;
 
 /* ---------- 날짜 ---------- */
@@ -744,6 +770,89 @@ who.addEventListener("input", function () {
   try { localStorage.setItem("bookplan-name", myName); } catch (e) {}
 });
 
+/* ---------- 여러 권 · 탭 ---------- */
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function bookIds() {
+  return Object.keys(BOOKS).sort(function (a, b) {
+    return (BOOKS[a].created || 0) - (BOOKS[b].created || 0) || (a < b ? -1 : 1);
+  });
+}
+function bookName(id) {
+  var t = BOOKS[id] && BOOKS[id].data && BOOKS[id].data.title;
+  return (t && t.trim()) ? t.trim() : "제목 없는 책";
+}
+function renderTabs() {
+  var host = document.getElementById("tabs");
+  host.textContent = "";
+  var ids = bookIds();
+  ids.forEach(function (id) {
+    var b = el("button", "tab" + (id === activeId ? " on" : ""));
+    b.type = "button";
+    b.appendChild(document.createTextNode(bookName(id)));
+    if (id === activeId && ids.length > 1) {
+      var x = el("span", "close", "×");
+      x.title = "이 책 삭제";
+      var armed = null;
+      x.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (!armed) {
+          b.classList.add("arm");
+          x.textContent = " 정말 삭제할까요?";
+          armed = setTimeout(function () {
+            armed = null; b.classList.remove("arm"); x.textContent = "×";
+          }, 3500);
+          return;
+        }
+        clearTimeout(armed);
+        removeBook(id);
+      });
+      b.appendChild(x);
+    }
+    b.addEventListener("click", function () { if (id !== activeId) switchBook(id); });
+    host.appendChild(b);
+  });
+  var add = el("button", "tab-add", "+ 책 추가");
+  add.type = "button";
+  add.addEventListener("click", addBook);
+  host.appendChild(add);
+}
+function loadActive() {
+  if (!BOOKS[activeId]) return;
+  S = BOOKS[activeId].data;
+  if (!S.edit) S.edit = [];
+  if (!S.promo) S.promo = [];
+  page = 0;
+  fTitle.value = S.title || "";
+  renderEdit(); renderPromo(); stats(); renderTabs();
+}
+function switchBook(id) {
+  activeId = id;
+  try { localStorage.setItem("bookplan-active", id); } catch (e) {}
+  loadActive();
+  setSaveButton("clean", "고치면 자동으로 저장돼요");
+  showLastEditor();
+}
+function addBook() {
+  var id = newId();
+  BOOKS[id] = { rev: "", by: myName || "", at: Date.now(), created: Date.now(),
+                data: JSON.parse(JSON.stringify(DEFAULT_STATE)) };
+  activeId = id;
+  try { localStorage.setItem("bookplan-active", id); } catch (e) {}
+  loadActive();
+  saveBook(id);
+  fTitle.focus();
+}
+function removeBook(id) {
+  delete BOOKS[id];
+  if (remote) remote.remove(id);
+  var ids = bookIds();
+  activeId = ids[0] || null;
+  if (activeId) { try { localStorage.setItem("bookplan-active", activeId); } catch (e) {} loadActive(); }
+  else addBook();
+}
+
 /* ---------- 저장 상태 ---------- */
 function setSync(cls, text) {
   var box = document.getElementById("sync");
@@ -760,61 +869,64 @@ function agoText(ts) {
 }
 function showLastEditor() {
   if (!remote) return;
-  if (lastEditor && lastEditor.by) setSync("live", lastEditor.by + " · " + agoText(lastEditor.at));
+  var b = BOOKS[activeId];
+  if (b && b.by) setSync("live", b.by + " · " + agoText(b.at));
   else setSync("live", "실시간 공유 중");
 }
 setInterval(showLastEditor, 30000);
 
-/* ---------- 바뀔 때마다 저장 ---------- */
-var saveTimer = null;
-var lastInputAt = 0;
-var unsaved = false;
-
+/* ---------- 저장 ---------- */
+var saveTimer = null, lastInputAt = 0, unsaved = false;
 var saveBtn = document.getElementById("savebtn");
 var saveNote = document.getElementById("savenote");
 
 function setSaveButton(state, note) {
-  // state: "clean" | "dirty" | "saving"
   unsaved = (state === "dirty");
   saveBtn.classList.toggle("on", state === "dirty");
   saveBtn.textContent = state === "saving" ? "저장 중…" : (state === "dirty" ? "저장" : "저장됨");
   saveNote.textContent = note;
   saveNote.classList.toggle("dirty", state === "dirty");
 }
-
+function saveBook(id) {
+  if (!remote || !BOOKS[id]) return Promise.resolve();
+  var rev = newId();
+  myRevs[id] = rev;
+  BOOKS[id].rev = rev;
+  BOOKS[id].by = myName || "누군가";
+  BOOKS[id].at = Date.now();
+  lastEditor = { by: BOOKS[id].by, at: BOOKS[id].at };
+  return remote.save(id, {
+    rev: rev, by: BOOKS[id].by, at: BOOKS[id].at,
+    created: BOOKS[id].created || Date.now(), data: BOOKS[id].data
+  });
+}
 function doSave() {
   clearTimeout(saveTimer);
   if (!remote) { saveLocal(); setSaveButton("clean", "이 브라우저에만 저장됨"); return; }
   setSaveButton("saving", "");
   setSync("live", "저장 중…");
-  myRev = String(Date.now()) + "." + Math.random().toString(36).slice(2, 8);
-  lastEditor = { by: myName || "누군가", at: Date.now() };
-  remote.save({ rev: myRev, by: lastEditor.by, at: lastEditor.at, data: S })
-    .then(function () {
-      setSaveButton("clean", "모두에게 전달됐어요");
-      showLastEditor();
-    })
+  saveBook(activeId)
+    .then(function () { setSaveButton("clean", "모두에게 전달됐어요"); showLastEditor(); })
     .catch(function () {
       setSaveButton("dirty", "저장 실패 — 인터넷 연결을 확인하고 다시 눌러주세요");
       setSync("off", "저장 실패");
     });
 }
-
 function changed() {
   lastInputAt = Date.now();
+  if (BOOKS[activeId]) BOOKS[activeId].data = S;
+  renderTabs();
   if (!remote) { saveLocal(); setSaveButton("clean", "이 브라우저에만 저장됨"); return; }
   setSaveButton("dirty", "저장하지 않은 변경사항");
   clearTimeout(saveTimer);
   saveTimer = setTimeout(doSave, 1500);
 }
-
 saveBtn.addEventListener("click", function () { if (unsaved) doSave(); });
-
 window.addEventListener("beforeunload", function (e) {
   if (unsaved) { e.preventDefault(); e.returnValue = ""; }
 });
 function saveLocal() {
-  try { localStorage.setItem("bookplan-local", JSON.stringify(S)); } catch (e) {}
+  try { localStorage.setItem("bookplan-local", JSON.stringify(BOOKS)); } catch (e) {}
   setSync("off", "이 브라우저에만 저장됨");
 }
 
@@ -823,34 +935,41 @@ function typing() {
   var a = document.activeElement;
   return a && (a.tagName === "INPUT" || a.tagName === "SELECT" || a.tagName === "TEXTAREA");
 }
-function applyRemote(payload) {
-  if (!payload || !payload.data) return;
-  if (payload.rev && payload.rev === myRev) return;         // 내가 쓴 것의 메아리
-  if (typing()) { pendingRemote = payload; return; }         // 입력 중이면 잠시 보류
-  S = payload.data;
-  if (!S.promo) S.promo = [];
-  if (!S.edit) S.edit = [];
-  fTitle.value = S.title || "";
-  renderEdit(); renderPromo(); stats();
-  lastEditor = { by: payload.by || "누군가", at: payload.at || Date.now() };
+function applyBooks(v) {
+  if (typing() && Date.now() - lastInputAt < 4000) { pendingBooks = v || {}; return; }
+  var incoming = v || {};
+  var before = BOOKS[activeId] ? BOOKS[activeId].rev : null;
+  BOOKS = incoming;
+  var ids = bookIds();
+  if (!ids.length) return;
+  if (!activeId || !BOOKS[activeId]) activeId = ids[0];
+  var b = BOOKS[activeId];
+  if (b.rev && b.rev === myRevs[activeId]) { renderTabs(); return; }   // 내가 쓴 것의 메아리
+  if (b.rev === before) { renderTabs(); return; }                      // 이 책은 그대로
+  loadActive();
   showLastEditor();
-  if (typeof setSaveButton === "function") setSaveButton("clean", "고치면 자동으로 저장돼요");
-  if (payload.by && payload.by !== myName) toast(payload.by + "님이 방금 수정했어요");
+  if (b.by && b.by !== myName) toast(b.by + "님이 「" + bookName(activeId) + "」를 수정했어요");
 }
-document.addEventListener("focusout", function () {
-  setTimeout(flushPending, 120);
-});
+document.addEventListener("focusout", function () { setTimeout(flushPending, 120); });
 function flushPending() {
-  if (!pendingRemote) return;
-  if (typing() && Date.now() - lastInputAt < 4000) return;   // 아직 타이핑 중이면 잠시 더 기다림
-  var p = pendingRemote; pendingRemote = null;
+  if (!pendingBooks) return;
+  if (typing() && Date.now() - lastInputAt < 4000) return;
+  var v = pendingBooks; pendingBooks = null;
   var a = document.activeElement;
   if (a && a.blur) a.blur();
-  applyRemote(p);
+  applyBooks(v);
 }
 setInterval(flushPending, 1000);
 
 /* ---------- 첫 화면 ---------- */
+try { activeId = localStorage.getItem("bookplan-active") || null; } catch (e) {}
+BOOKS = {};
+var boot = newId();
+BOOKS[boot] = { rev: "", by: "", at: Date.now(), created: Date.now(), data: S };
+if (!activeId) activeId = boot;
+if (!BOOKS[activeId]) activeId = boot;
+S = BOOKS[activeId].data;
+renderTabs();
 renderEdit();
 renderPromo();
 stats();
@@ -862,7 +981,10 @@ stats();
     document.getElementById("setup").classList.add("on");
     try {
       var local = localStorage.getItem("bookplan-local");
-      if (local) { var o = JSON.parse(local); if (o && o.edit) applyRemote({ data: o }); }
+      if (local) {
+        var o = JSON.parse(local);
+        if (o && Object.keys(o).length) { BOOKS = o; if (!BOOKS[activeId]) activeId = bookIds()[0]; loadActive(); }
+      }
     } catch (e) {}
     setSync("off", "이 브라우저에만 저장됨");
     return;
@@ -872,21 +994,41 @@ stats();
     var dbMod = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js");
     var app = appMod.initializeApp(cfg);
     var db = dbMod.getDatabase(app);
-    var planRef = dbMod.ref(db, "plans/" + ROOM);
+    var booksRef = dbMod.ref(db, "books");
 
     remote = {
-      save: function (payload) { return dbMod.set(planRef, payload); }
+      save: function (id, payload) { return dbMod.set(dbMod.ref(db, "books/" + id), payload); },
+      remove: function (id) { return dbMod.remove(dbMod.ref(db, "books/" + id)); }
     };
 
-    dbMod.onValue(planRef, function (snap) {
+    // 예전에 한 권으로 쓰던 자료가 있으면 첫 번째 책으로 옮겨 온다
+    var legacyData = null;
+    try {
+      var old = await dbMod.get(dbMod.ref(db, "plans/" + ROOM));
+      if (old && old.exists() && old.val() && old.val().data) legacyData = old.val().data;
+    } catch (e) { /* 없으면 그냥 새로 시작 */ }
+
+    var seeded = false;
+    dbMod.onValue(booksRef, function (snap) {
       var v = snap.val();
-      if (!v) {                       // 아직 비어 있으면 기본 일정표를 올려둔다
-        myRev = String(Date.now());
-        dbMod.set(planRef, { rev: myRev, by: myName || "처음 설정", at: Date.now(), data: S });
+      if (!v || !Object.keys(v).length) {
+        if (seeded) return;
+        seeded = true;
+        var id = newId();
+        activeId = id;
+        try { localStorage.setItem("bookplan-active", id); } catch (e) {}
+        BOOKS = {};
+        BOOKS[id] = {
+          rev: newId(), by: myName || "", at: Date.now(), created: Date.now(),
+          data: legacyData || JSON.parse(JSON.stringify(DEFAULT_STATE))
+        };
+        myRevs[id] = BOOKS[id].rev;
+        loadActive();
+        remote.save(id, BOOKS[id]);
         setSync("live", "실시간 공유 중");
         return;
       }
-      applyRemote(v);
+      applyBooks(v);
       showLastEditor();
     }, function () {
       setSync("off", "연결 실패 — 데이터베이스 규칙을 확인하세요");
@@ -902,6 +1044,6 @@ stats();
   }
 })();
 </script>
-<!-- rev: 2026-08-28 재배포 -->
+<!-- rev: 2026-08-28 여러 권 탭 -->
 </body>
 </html>
