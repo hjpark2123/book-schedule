@@ -225,6 +225,11 @@
       <input id="f-ok" type="date">
       <span class="sub" id="s-oksub"></span>
     </div>
+    <div class="key edit">
+      <span class="k">창고 입고 예정일</span>
+      <input id="f-wh" type="date">
+      <span class="sub" id="s-whsub"></span>
+    </div>
     <div class="key promo">
       <span class="k">출간 예정일 (홍보 기준일)</span>
       <input id="f-pub" type="date">
@@ -309,7 +314,7 @@ var DEFAULT_STATE = {
     { n: "3차 교정 (최종 오탈자)", d: 63, st: "진행", m: "" },
     { n: "OK교 · 인쇄 데이터 넘김", d: 66, st: "진행", m: "편집 완료 시점", k: "ok" },
     { n: "인쇄 · 제본", d: 80, st: "진행", m: "" },
-    { n: "물류 입고", d: 85, st: "진행", m: "" }
+    { n: "창고 입고", d: 82, st: "진행", m: "창고 입고 예정 시점", k: "wh" }
   ],
   promo: [
     { t: "배본일", rows: [
@@ -368,6 +373,11 @@ function baseDate(base) { return base === "pub" ? pubDate() : startDate(); }
 function okRow() {
   for (var i = 0; i < S.edit.length; i++) if (S.edit[i].k === "ok") return S.edit[i];
   return S.edit.length ? S.edit[S.edit.length - 1] : null;
+}
+function whRow() {
+  for (var i = 0; i < S.edit.length; i++) if (S.edit[i].k === "wh") return S.edit[i];
+  for (var j = S.edit.length - 1; j >= 0; j--) if (/입고|창고/.test(S.edit[j].n || "")) return S.edit[j];
+  return null;
 }
 function offText(base, n) { return (base === "pub" ? "출간 D" : "D") + (n >= 0 ? "+" : "") + n; }
 function allRows() {
@@ -602,6 +612,10 @@ function stats() {
   var s = startDate(), p = pubDate(), ok = okRow();
   document.getElementById("s-startday").textContent = s ? ko(s) + " 시작" : "날짜를 선택하세요";
   document.getElementById("s-oksub").textContent = ok && s ? ok.n + " · 편집 " + (ok.d + 1) + "일" : "편집 단계를 추가하세요";
+  var wh = whRow();
+  document.getElementById("s-whsub").textContent = (wh && s)
+    ? (wh.d === S.pubOff ? "출간일과 같은 날" : wh.d < S.pubOff ? "출간 " + (S.pubOff - wh.d) + "일 전" : "출간 " + (wh.d - S.pubOff) + "일 후") + " · " + wh.n
+    : "편집 일정에 입고 단계를 추가하세요";
   document.getElementById("s-pubsub").textContent = s ? "편집 시작 D+" + S.pubOff + " · " + ko(p) : "";
 
   var rows = allRows();
@@ -614,10 +628,12 @@ function stats() {
   timeline();
 }
 function refreshKeys() {
-  var s = startDate(), ok = okRow();
+  var s = startDate(), ok = okRow(), wh = whRow();
   fStart.value = S.start || "";
   fOk.value = (s && ok) ? iso(add(s, ok.d)) : "";
   fOk.disabled = !ok;
+  fWh.value = (s && wh) ? iso(add(s, wh.d)) : "";
+  fWh.disabled = !wh;
   fPub.value = s ? iso(pubDate()) : "";
 }
 function timeline() {
@@ -672,6 +688,7 @@ function timeline() {
 var fTitle = document.getElementById("f-title");
 var fStart = document.getElementById("f-start");
 var fOk = document.getElementById("f-ok");
+var fWh = document.getElementById("f-wh");
 var fPub = document.getElementById("f-pub");
 
 fTitle.addEventListener("input", function () { S.title = fTitle.value; changed(); });
@@ -687,6 +704,12 @@ fOk.addEventListener("change", function () {
   var pivot = ok.d;
   S.edit.forEach(function (r) { if (r.d >= pivot) r.d += delta; });
   S.pubOff = Math.max(target, S.pubOff + delta);
+  renderEdit(); syncAll(); stats(); changed();
+});
+fWh.addEventListener("change", function () {
+  var st = startDate(), wh = whRow(), picked = parse(fWh.value);
+  if (!st || !wh || !picked) { refreshKeys(); return; }
+  wh.d = diff(picked, st);
   renderEdit(); syncAll(); stats(); changed();
 });
 fPub.addEventListener("change", function () {
