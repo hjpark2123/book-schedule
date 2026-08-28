@@ -14,6 +14,7 @@
     --edit: #14625c; --edit-soft: #dcebe8; --promo: #97385f; --promo-soft: #f6e2ea;
     --ok: #2c7a4b; --hold: #9a7318; --on-accent: #ffffff;
     --shadow: 0 1px 2px rgba(20,40,36,.06), 0 8px 24px -16px rgba(20,40,36,.35);
+    --b0: #0072b2; --b1: #d55e00; --b2: #009e73; --b3: #6b3fa0; --b4: #b5548a; --b5: #8a6d10;
     --serif: "Gowun Batang", "Nanum Myeongjo", serif;
     --sans: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   }
@@ -23,6 +24,7 @@
       --line: #2b3734; --line-strong: #3b4a46; --ink: #e6edea; --muted: #94a5a0;
       --edit: #63bfb2; --edit-soft: #17322e; --promo: #e78dab; --promo-soft: #35202a;
       --ok: #6bbd8a; --hold: #d6a94a; --on-accent: #0f1513;
+      --b0: #56b4e9; --b1: #f08a4b; --b2: #3fcfa4; --b3: #b79bef; --b4: #e79ec8; --b5: #d9c04a;
       --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
     }
   }
@@ -31,6 +33,7 @@
     --line: #2b3734; --line-strong: #3b4a46; --ink: #e6edea; --muted: #94a5a0;
     --edit: #63bfb2; --edit-soft: #17322e; --promo: #e78dab; --promo-soft: #35202a;
     --ok: #6bbd8a; --hold: #d6a94a; --on-accent: #0f1513;
+    --b0: #56b4e9; --b1: #f08a4b; --b2: #3fcfa4; --b3: #b79bef; --b4: #e79ec8; --b5: #d9c04a;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
   }
 
@@ -117,6 +120,51 @@
   .tl-bar.promo { background: var(--promo); }
   .tl-pub { position: absolute; top: -4px; bottom: 16px; border-left: 2px dashed var(--edit); }
   .tl-empty { font-size: 13px; color: var(--muted); padding: 6px 0 10px; }
+
+  .cal-nav { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .cal-nav button {
+    font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); cursor: pointer;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 7px; min-width: 30px; height: 30px; padding: 0 9px;
+  }
+  .cal-nav button:hover { border-color: var(--edit); color: var(--edit); }
+  .cal-nav .m { font-size: 14px; font-weight: 600; min-width: 108px; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .cal-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 12px 18px 4px; font-size: 12.5px; }
+  .cal-legend span { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+  .cal-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .cal-legend b { color: var(--ink); font-weight: 600; }
+
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 8px; }
+  .cal .dow { background: var(--surface-2); text-align: center; font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 6px 0; }
+  .cal .dow.sun { color: #c0392b; }
+  .cal .day { background: var(--surface); min-height: 84px; padding: 5px 6px; display: flex; flex-direction: column; gap: 3px; }
+  .cal .day.out { background: var(--surface-2); }
+  .cal .day .n { font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cal .day.out .n { opacity: .45; }
+  .cal .day.today .n { color: var(--on-accent); background: var(--edit); border-radius: 99px; width: 20px; height: 20px; display: grid; place-items: center; }
+  .cal .day.sun .n { color: #c0392b; }
+  .chip {
+    display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600;
+    border-radius: 5px; padding: 2px 5px; cursor: pointer; overflow: hidden; white-space: nowrap;
+    color: var(--ink); background: var(--surface-2); border-left: 3px solid var(--line);
+  }
+  .chip:hover { background: var(--edit-soft); }
+  .chip em { font-style: normal; color: var(--muted); font-weight: 500; }
+  .chip .t { overflow: hidden; text-overflow: ellipsis; }
+
+  .cal-list { padding: 12px 18px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .cal-list .row { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; padding: 3px 4px; border-radius: 6px; }
+  .cal-list .row:hover { background: var(--surface-2); }
+  .cal-list .row i { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .cal-list .row .d { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 92px; }
+  .cal-list .row .k { color: var(--muted); font-size: 12px; }
+  .cal-list .empty { font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 700px) {
+    .cal .day { min-height: 58px; }
+    .chip .t, .chip em { display: none; }
+    .chip { justify-content: center; padding: 3px; }
+  }
 
   section { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
   .sec-head { display: flex; align-items: center; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
@@ -282,6 +330,22 @@
     <div class="tl-body" id="tl"></div>
   </div>
 
+  <section class="cal-sec">
+    <div class="sec-head">
+      <span class="dot" style="background:var(--muted)"></span>
+      <h2>전체 달력</h2>
+      <div class="cal-nav">
+        <button type="button" id="cal-prev" title="이전 달">‹</button>
+        <span class="m" id="cal-title"></span>
+        <button type="button" id="cal-next" title="다음 달">›</button>
+        <button type="button" id="cal-today">오늘</button>
+      </div>
+    </div>
+    <div class="cal-legend" id="cal-legend"></div>
+    <div class="cal" id="cal"></div>
+    <div class="cal-list" id="cal-list"></div>
+  </section>
+
   <section class="sec-edit">
     <div class="sec-head"><span class="dot"></span><h2>편집 일정</h2><span class="basis">편집 시작일 기준</span></div>
     <div class="tablewrap">
@@ -312,7 +376,7 @@
   <div class="foot">
     <b>쓰는 법</b> — 책 제목과 편집 시작일만 넣으면 나머지 날짜가 자동으로 계산돼요. 편집 완료일 · 창고 입고일 · 배본일은 서로 상관없이 각각 고르시면 됩니다. 홍보는 시작일만 고르면 완료일이 7일 뒤로 잡혀요.<br>
     <b>같이 고치기</b> — 고치면 자동으로 저장되고, 이 링크를 열어둔 모든 사람 화면에 몇 초 안에 그대로 반영됩니다. 바로 넘기고 싶을 때는 아래 [저장] 버튼을 누르세요. 오른쪽 위에 이름을 적어두면 누가 마지막에 고쳤는지 서로 보여요.<br>
-    <b>순서 바꾸기</b> — 각 줄 맨 왼쪽 ≡ 손잡이를 끌어 올리거나 내리면 순서가 바뀝니다(휴대폰에서는 손가락으로 꾹 눌러 끌기). [날짜순 정렬]을 누르면 날짜 빠른 순으로 한 번에 정리돼요.<br>\n    <b>여러 권 같이</b> — 위쪽 탭으로 책을 넘나듭니다. [+ 책 추가]로 새 책을 만들면 모두에게 같은 탭이 생겨요. 탭은 사람마다 따로 열려 있어서, 내가 보는 책이 남 때문에 바뀌지 않습니다.
+    <b>전체 달력</b> — 모든 책의 편집 완료일 · 창고 입고 예정일 · 배본일이 책마다 다른 색으로 한 달치씩 표시됩니다. 날짜를 누르면 그 책 탭으로 넘어가요.<br>\n    <b>순서 바꾸기</b> — 각 줄 맨 왼쪽 ≡ 손잡이를 끌어 올리거나 내리면 순서가 바뀝니다(휴대폰에서는 손가락으로 꾹 눌러 끌기). [날짜순 정렬]을 누르면 날짜 빠른 순으로 한 번에 정리돼요.<br>\n    <b>여러 권 같이</b> — 위쪽 탭으로 책을 넘나듭니다. [+ 책 추가]로 새 책을 만들면 모두에게 같은 탭이 생겨요. 탭은 사람마다 따로 열려 있어서, 내가 보는 책이 남 때문에 바뀌지 않습니다.
   </div>
 
   <div class="savebar">
@@ -403,25 +467,29 @@ function ko(d) { return d ? (d.getMonth() + 1) + "월 " + d.getDate() + "일 (" 
 function startDate() { return parse(S.start); }
 function pubDate() { var s = startDate(); return s ? add(s, S.pubOff) : null; }
 function baseDate(base) { return base === "pub" ? pubDate() : startDate(); }
-function whRowStrict() {                 // 창고 입고 단계 (없으면 null)
-  for (var i = 0; i < S.edit.length; i++) if (S.edit[i].k === "wh") return S.edit[i];
-  for (var j = S.edit.length - 1; j >= 0; j--) {
-    if (S.edit[j].k === "ok") continue;
-    if (/창고|입고/.test(S.edit[j].n || "")) return S.edit[j];
+function whRowOf(list) {                  // 창고 입고 단계 (없으면 null)
+  list = list || [];
+  for (var i = 0; i < list.length; i++) if (list[i].k === "wh") return list[i];
+  for (var j = list.length - 1; j >= 0; j--) {
+    if (list[j].k === "ok") continue;
+    if (/창고|입고/.test(list[j].n || "")) return list[j];
   }
   return null;
 }
-function okRow() {                        // 인쇄 넘김(편집 완료) 단계 — 창고 입고와 절대 겹치지 않는다
-  var wh = whRowStrict();
-  for (var i = 0; i < S.edit.length; i++) if (S.edit[i].k === "ok") return S.edit[i];
-  for (var j = 0; j < S.edit.length; j++) {
-    if (S.edit[j] === wh) continue;
-    if (/OK교|넘김|인쇄|최종/.test(S.edit[j].n || "")) return S.edit[j];
+function okRowOf(list) {                  // 인쇄 넘김(편집 완료) 단계 — 창고 입고와 절대 겹치지 않는다
+  list = list || [];
+  var wh = whRowOf(list);
+  for (var i = 0; i < list.length; i++) if (list[i].k === "ok") return list[i];
+  for (var j = 0; j < list.length; j++) {
+    if (list[j] === wh) continue;
+    if (/OK교|넘김|인쇄|최종/.test(list[j].n || "")) return list[j];
   }
-  for (var m = S.edit.length - 1; m >= 0; m--) if (S.edit[m] !== wh) return S.edit[m];
+  for (var m = list.length - 1; m >= 0; m--) if (list[m] !== wh) return list[m];
   return null;
 }
-function whRow() { return whRowStrict(); }
+function whRowStrict() { return whRowOf(S.edit); }
+function okRow() { return okRowOf(S.edit); }
+function whRow() { return whRowOf(S.edit); }
 function offText(base, n) { return (base === "pub" ? "배본 D" : "D") + (n >= 0 ? "+" : "") + n; }
 function allRows() {
   var out = S.edit.slice();
@@ -855,6 +923,137 @@ function bookName(id) {
   var t = BOOKS[id] && BOOKS[id].data && BOOKS[id].data.title;
   return (t && t.trim()) ? t.trim() : "제목 없는 책";
 }
+function bookColor(id) {
+  var i = bookIds().indexOf(id);
+  return "var(--b" + ((i < 0 ? 0 : i) % 6) + ")";
+}
+function bookMarks(id) {
+  var b = BOOKS[id];
+  if (!b || !b.data) return [];
+  var d = b.data, st = parse(d.start);
+  if (!st) return [];
+  var out = [], ok = okRowOf(d.edit), wh = whRowOf(d.edit);
+  if (ok) out.push({ id: id, kind: "편집 완료", date: add(st, ok.d) });
+  if (wh) out.push({ id: id, kind: "창고 입고", date: add(st, wh.d) });
+  out.push({ id: id, kind: "배본", date: add(st, d.pubOff || 0) });
+  return out;
+}
+function allMarks() {
+  var out = [];
+  bookIds().forEach(function (id) { out = out.concat(bookMarks(id)); });
+  return out;
+}
+var calMonth = null;   // 달력이 보여 주는 달 (1일)
+var calAuto = true;    // 사용자가 달을 직접 넘기기 전까지는 자동으로 맞춘다
+function renderCalendar() {
+  var host = document.getElementById("cal");
+  if (!host) return;
+  var now = new Date();
+  if (calAuto) {
+    calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // 이번 달에 아무 일정이 없으면, 앞으로 가장 가까운 일정이 있는 달을 먼저 보여 준다
+    var ms = allMarks().filter(function (m) { return m.date; }).sort(function (a, b) { return a.date - b.date; });
+    var inThis = ms.some(function (m) {
+      return m.date.getFullYear() === calMonth.getFullYear() && m.date.getMonth() === calMonth.getMonth();
+    });
+    if (!inThis) {
+      var next = ms.find(function (m) { return m.date >= calMonth; }) || ms[ms.length - 1];
+      if (next) calMonth = new Date(next.date.getFullYear(), next.date.getMonth(), 1);
+    }
+  }
+  document.getElementById("cal-title").textContent =
+    calMonth.getFullYear() + "년 " + (calMonth.getMonth() + 1) + "월";
+
+  // 범례
+  var leg = document.getElementById("cal-legend");
+  leg.textContent = "";
+  var ids = bookIds();
+  ids.forEach(function (id) {
+    var sp = el("span");
+    var sw = el("i"); sw.style.background = bookColor(id);
+    sp.appendChild(sw);
+    sp.appendChild(el("b", null, bookName(id)));
+    leg.appendChild(sp);
+  });
+
+  var marks = allMarks();
+  var byDay = {};
+  marks.forEach(function (m) {
+    if (!m.date) return;
+    (byDay[iso(m.date)] = byDay[iso(m.date)] || []).push(m);
+  });
+
+  host.textContent = "";
+  ["일", "월", "화", "수", "목", "금", "토"].forEach(function (d, i) {
+    host.appendChild(el("div", "dow" + (i === 0 ? " sun" : ""), d));
+  });
+
+  var first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+  var startCell = add(first, -first.getDay());
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (var i = 0; i < 42; i++) {
+    var day = add(startCell, i);
+    var cls = "day";
+    if (day.getMonth() !== calMonth.getMonth()) cls += " out";
+    if (day.getDay() === 0) cls += " sun";
+    if (iso(day) === iso(today)) cls += " today";
+    var cell = el("div", cls);
+    cell.appendChild(el("span", "n", String(day.getDate())));
+    (byDay[iso(day)] || []).forEach(function (m) {
+      var c = el("div", "chip");
+      c.style.borderLeftColor = bookColor(m.id);
+      var sw = el("span"); 
+      sw.style.cssText = "width:7px;height:7px;border-radius:2px;flex:none;background:" + bookColor(m.id);
+      c.appendChild(sw);
+      c.appendChild(el("span", "t", bookName(m.id)));
+      c.appendChild(el("em", null, m.kind));
+      c.title = bookName(m.id) + " · " + m.kind;
+      c.addEventListener("click", function () {
+        if (m.id !== activeId) switchBook(m.id);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      cell.appendChild(c);
+    });
+    host.appendChild(cell);
+  }
+
+  // 이 달의 일정 목록
+  var list = document.getElementById("cal-list");
+  list.textContent = "";
+  var mine = marks.filter(function (m) {
+    return m.date && m.date.getFullYear() === calMonth.getFullYear() && m.date.getMonth() === calMonth.getMonth();
+  }).sort(function (a, b) { return a.date - b.date; });
+  if (!mine.length) {
+    list.appendChild(el("div", "empty", "이 달에는 표시할 날짜가 없어요."));
+    return;
+  }
+  mine.forEach(function (m) {
+    var r = el("div", "row");
+    var sw = el("i"); sw.style.background = bookColor(m.id);
+    r.appendChild(sw);
+    r.appendChild(el("span", "d", ko(m.date)));
+    r.appendChild(el("span", null, bookName(m.id)));
+    r.appendChild(el("span", "k", m.kind));
+    r.addEventListener("click", function () {
+      if (m.id !== activeId) switchBook(m.id);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    list.appendChild(r);
+  });
+}
+document.getElementById("cal-prev").addEventListener("click", function () {
+  calAuto = false;
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1); renderCalendar();
+});
+document.getElementById("cal-next").addEventListener("click", function () {
+  calAuto = false;
+  calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1); renderCalendar();
+});
+document.getElementById("cal-today").addEventListener("click", function () {
+  calAuto = false;
+  var n = new Date(); calMonth = new Date(n.getFullYear(), n.getMonth(), 1); renderCalendar();
+});
+
 function renderTabs() {
   var host = document.getElementById("tabs");
   host.textContent = "";
@@ -862,6 +1061,9 @@ function renderTabs() {
   ids.forEach(function (id) {
     var b = el("button", "tab" + (id === activeId ? " on" : ""));
     b.type = "button";
+    var dot = el("span");
+    dot.style.cssText = "width:9px;height:9px;border-radius:3px;flex:none;background:" + bookColor(id);
+    b.appendChild(dot);
     b.appendChild(document.createTextNode(bookName(id)));
     if (id === activeId && ids.length > 1) {
       var x = el("span", "close", "×");
@@ -897,7 +1099,7 @@ function loadActive() {
   if (!S.promo) S.promo = [];
   page = 0;
   fTitle.value = S.title || "";
-  renderEdit(); renderPromo(); stats(); renderTabs();
+  renderEdit(); renderPromo(); stats(); renderTabs(); renderCalendar();
 }
 function switchBook(id) {
   activeId = id;
@@ -988,6 +1190,7 @@ function changed() {
   lastInputAt = Date.now();
   if (BOOKS[activeId]) BOOKS[activeId].data = S;
   renderTabs();
+  renderCalendar();
   if (!remote) { saveLocal(); setSaveButton("clean", "이 브라우저에만 저장됨"); return; }
   setSaveButton("dirty", "저장하지 않은 변경사항");
   clearTimeout(saveTimer);
@@ -1016,8 +1219,8 @@ function applyBooks(v) {
   if (!ids.length) return;
   if (!activeId || !BOOKS[activeId]) activeId = ids[0];
   var b = BOOKS[activeId];
-  if (b.rev && b.rev === myRevs[activeId]) { renderTabs(); return; }   // 내가 쓴 것의 메아리
-  if (b.rev === before) { renderTabs(); return; }                      // 이 책은 그대로
+  if (b.rev && b.rev === myRevs[activeId]) { renderTabs(); renderCalendar(); return; }   // 내가 쓴 것의 메아리
+  if (b.rev === before) { renderTabs(); renderCalendar(); return; }                      // 이 책은 그대로
   loadActive();
   showLastEditor();
   if (b.by && b.by !== myName) toast(b.by + "님이 「" + bookName(activeId) + "」를 수정했어요");
@@ -1045,6 +1248,7 @@ renderTabs();
 renderEdit();
 renderPromo();
 stats();
+renderCalendar();
 
 /* ---------- 파이어베이스 연결 ---------- */
 (async function connect() {
@@ -1116,6 +1320,6 @@ stats();
   }
 })();
 </script>
-<!-- rev: 2026-08-28 순서 바꾸기 -->
+<!-- rev: 2026-08-28 전체 달력 -->
 </body>
 </html>
