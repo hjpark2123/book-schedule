@@ -370,15 +370,25 @@ function ko(d) { return d ? (d.getMonth() + 1) + "월 " + d.getDate() + "일 (" 
 function startDate() { return parse(S.start); }
 function pubDate() { var s = startDate(); return s ? add(s, S.pubOff) : null; }
 function baseDate(base) { return base === "pub" ? pubDate() : startDate(); }
-function okRow() {
-  for (var i = 0; i < S.edit.length; i++) if (S.edit[i].k === "ok") return S.edit[i];
-  return S.edit.length ? S.edit[S.edit.length - 1] : null;
-}
-function whRow() {
+function whRowStrict() {                 // 창고 입고 단계 (없으면 null)
   for (var i = 0; i < S.edit.length; i++) if (S.edit[i].k === "wh") return S.edit[i];
-  for (var j = S.edit.length - 1; j >= 0; j--) if (/입고|창고/.test(S.edit[j].n || "")) return S.edit[j];
+  for (var j = S.edit.length - 1; j >= 0; j--) {
+    if (S.edit[j].k === "ok") continue;
+    if (/창고|입고/.test(S.edit[j].n || "")) return S.edit[j];
+  }
   return null;
 }
+function okRow() {                        // 인쇄 넘김(편집 완료) 단계 — 창고 입고와 절대 겹치지 않는다
+  var wh = whRowStrict();
+  for (var i = 0; i < S.edit.length; i++) if (S.edit[i].k === "ok") return S.edit[i];
+  for (var j = 0; j < S.edit.length; j++) {
+    if (S.edit[j] === wh) continue;
+    if (/OK교|넘김|인쇄|최종/.test(S.edit[j].n || "")) return S.edit[j];
+  }
+  for (var m = S.edit.length - 1; m >= 0; m--) if (S.edit[m] !== wh) return S.edit[m];
+  return null;
+}
+function whRow() { return whRowStrict(); }
 function offText(base, n) { return (base === "pub" ? "출간 D" : "D") + (n >= 0 ? "+" : "") + n; }
 function allRows() {
   var out = S.edit.slice();
@@ -712,6 +722,8 @@ fWh.addEventListener("change", function () {
   if (wh) {
     wh.d = d;
   } else {                                  // 단계가 없으면 새로 만들어 순서에 맞게 끼워 넣는다
+    var curOk = okRow();
+    if (curOk && !curOk.k) curOk.k = "ok";  // 편집 완료일이 새 단계로 옮겨가지 않도록 고정
     wh = { n: "창고 입고", d: d, st: "진행", m: "", k: "wh" };
     var at = S.edit.length;
     for (var i = 0; i < S.edit.length; i++) { if (S.edit[i].d > d) { at = i; break; } }
