@@ -231,7 +231,7 @@
       <span class="sub" id="s-whsub"></span>
     </div>
     <div class="key promo">
-      <span class="k">출간 예정일 (홍보 기준일)</span>
+      <span class="k">배본일 (홍보 기준일)</span>
       <input id="f-pub" type="date">
       <span class="sub" id="s-pubsub"></span>
     </div>
@@ -269,13 +269,16 @@
   </section>
 
   <section class="sec-promo">
-    <div class="sec-head"><span class="dot"></span><h2>홍보 일정</h2><span class="basis">출간 예정일 기준 · 기간 7일</span></div>
+    <div class="sec-head"><span class="dot"></span><h2>홍보 일정</h2><span class="basis">배본일 기준 · 기간 7일</span></div>
     <div id="promo-groups"></div>
-    <div class="rowfoot"><button class="addbtn" id="add-group">+ 홍보 항목 추가</button></div>
+    <div class="rowfoot">
+      <button class="addbtn" id="add-group">+ 홍보 항목 추가</button>
+      <button class="addbtn" id="add-gonggu">+ 공구 항목 추가</button>
+    </div>
   </section>
 
   <div class="foot">
-    <b>쓰는 법</b> — 책 제목과 편집 시작일만 넣으면 나머지 날짜가 자동으로 계산돼요. 편집 완료일이나 출간 예정일을 직접 고르면 그 뒤 일정이 함께 밀립니다. 홍보는 시작일만 고르면 완료일이 7일 뒤로 잡혀요.<br>
+    <b>쓰는 법</b> — 책 제목과 편집 시작일만 넣으면 나머지 날짜가 자동으로 계산돼요. 편집 완료일이나 배본일을 직접 고르면 그 뒤 일정이 함께 밀립니다. 홍보는 시작일만 고르면 완료일이 7일 뒤로 잡혀요.<br>
     <b>같이 고치기</b> — 고치면 자동으로 저장되고, 이 링크를 열어둔 모든 사람 화면에 몇 초 안에 그대로 반영됩니다. 바로 넘기고 싶을 때는 아래 [저장] 버튼을 누르세요. 오른쪽 위에 이름을 적어두면 누가 마지막에 고쳤는지 서로 보여요.
   </div>
 
@@ -317,11 +320,6 @@ var DEFAULT_STATE = {
     { n: "창고 입고", d: 82, st: "진행", m: "창고 입고 예정 시점", k: "wh" }
   ],
   promo: [
-    { t: "배본일", rows: [
-      { n: "온라인 서점 배본 (예스24 · 교보 · 알라딘)", d: 0, st: "진행", m: "" },
-      { n: "지역 서점 · 독립서점 배본", d: 3, st: "진행", m: "" },
-      { n: "도서관 · 유치원 납품 제안", d: 14, st: "진행", m: "" }
-    ]},
     { t: "SNS", rows: [
       { n: "서평단 모집 · 발표", d: -14, st: "진행", m: "모집 인원 / 발송일" },
       { n: "사전 예약 · 출간 알림 이벤트", d: -7, st: "진행", m: "" },
@@ -389,7 +387,7 @@ function okRow() {                        // 인쇄 넘김(편집 완료) 단계
   return null;
 }
 function whRow() { return whRowStrict(); }
-function offText(base, n) { return (base === "pub" ? "출간 D" : "D") + (n >= 0 ? "+" : "") + n; }
+function offText(base, n) { return (base === "pub" ? "배본 D" : "D") + (n >= 0 ? "+" : "") + n; }
 function allRows() {
   var out = S.edit.slice();
   S.promo.forEach(function (g) { out = out.concat(g.rows || []); });
@@ -476,26 +474,7 @@ function editRow(row) {
   syncRow(tr);
   return tr;
 }
-function promoRow(row, list) {
-  var tr = el("tr");
-  tr.appendChild(textCell(row, "n", "할 일", "c-name"));
-  tr.appendChild(dateCell(row, "pub", tr));
-  tr.appendChild(endCell(row, "pub"));
-  tr.appendChild(offCell(row, "pub"));
-  tr.appendChild(statusCell(row, tr));
-  tr.appendChild(textCell(row, "m", "—", "c-memo"));
-  tr.appendChild(delCell(function () {
-    var i = list.indexOf(row);
-    if (i > -1) list.splice(i, 1);
-    renderPromo(); stats(); changed();
-  }));
-  syncRow(tr);
-  return tr;
-}
-function gongguRow(row, list) {
-  var tr = el("tr");
-  tr.appendChild(textCell(row, "n", "인플루언서 · 채널명", "c-name"));
-
+function linkCell(row) {
   var td = el("td", "c-url"), cell = el("div", "urlcell"), i = el("input"), a = el("a", null, "↗");
   i.type = "url"; i.value = row.url || ""; i.placeholder = "https://"; i.autocomplete = "off";
   a.target = "_blank"; a.rel = "noopener noreferrer"; a.title = "링크 열기";
@@ -507,16 +486,20 @@ function gongguRow(row, list) {
   i.addEventListener("input", function () { row.url = i.value; syncLink(); changed(); });
   syncLink();
   cell.appendChild(i); cell.appendChild(a); td.appendChild(cell);
-  tr.appendChild(td);
-
+  return td;
+}
+function promoRow(row, list, isG) {
+  var tr = el("tr");
+  tr.appendChild(textCell(row, "n", isG ? "인플루언서 · 채널명" : "할 일", "c-name"));
+  tr.appendChild(linkCell(row));
   tr.appendChild(dateCell(row, "pub", tr));
   tr.appendChild(endCell(row, "pub"));
   tr.appendChild(offCell(row, "pub"));
   tr.appendChild(statusCell(row, tr));
-  tr.appendChild(textCell(row, "m", "수량 · 조건 등", "c-memo"));
+  tr.appendChild(textCell(row, "m", isG ? "수량 · 조건 등" : "—", "c-memo"));
   tr.appendChild(delCell(function () {
-    var k = list.indexOf(row);
-    if (k > -1) list.splice(k, 1);
+    var i = list.indexOf(row);
+    if (i > -1) list.splice(i, 1);
     renderPromo(); stats(); changed();
   }));
   syncRow(tr);
@@ -597,12 +580,12 @@ function renderPromo() {
     var tw = el("div", "tablewrap"), tbl = el("table"), thead = el("thead"), htr = el("tr");
     var cols = isG
       ? [["인플루언서","c-name"],["채널 링크","c-url"],["공구 시작","c-date"],["공구 종료","c-end"],["기준","c-off"],["상태","c-st"],["메모","c-memo"],["","c-x"]]
-      : [["할 일","c-name"],["시작일","c-date"],["완료일","c-end"],["기준","c-off"],["상태","c-st"],["메모","c-memo"],["","c-x"]];
+      : [["할 일","c-name"],["링크","c-url"],["시작일","c-date"],["완료일","c-end"],["기준","c-off"],["상태","c-st"],["메모","c-memo"],["","c-x"]];
     cols.forEach(function (c) { htr.appendChild(el("th", c[1], c[0])); });
     thead.appendChild(htr); tbl.appendChild(thead);
 
     var tb = el("tbody");
-    g.rows.forEach(function (r) { tb.appendChild(isG ? gongguRow(r, g.rows) : promoRow(r, g.rows)); });
+    g.rows.forEach(function (r) { tb.appendChild(promoRow(r, g.rows, isG)); });
     tbl.appendChild(tb); tw.appendChild(tbl); wrap.appendChild(tw);
 
     var rf = el("div", "rowfoot"), ab = el("button", "addbtn", isG ? "+ 공구 추가" : "+ 할 일 추가");
@@ -610,7 +593,7 @@ function renderPromo() {
     ab.addEventListener("click", function () {
       var last = g.rows[g.rows.length - 1];
       var d = last ? last.d + SPAN : 0;
-      g.rows.push(isG ? { n: "", url: "", d: d, st: "진행", m: "" } : { n: "", d: d, st: "진행", m: "" });
+      g.rows.push({ n: "", url: "", d: d, st: "진행", m: "" });
       renderPromo(); stats(); changed();
     });
     rf.appendChild(ab); wrap.appendChild(rf);
@@ -624,7 +607,7 @@ function stats() {
   document.getElementById("s-oksub").textContent = ok && s ? ok.n + " · 편집 " + (ok.d + 1) + "일" : "편집 단계를 추가하세요";
   var wh = whRow();
   document.getElementById("s-whsub").textContent = (wh && s)
-    ? (wh.d === S.pubOff ? "출간일과 같은 날" : wh.d < S.pubOff ? "출간 " + (S.pubOff - wh.d) + "일 전" : "출간 " + (wh.d - S.pubOff) + "일 후") + " · " + wh.n
+    ? (wh.d === S.pubOff ? "배본일과 같은 날" : wh.d < S.pubOff ? "배본 " + (S.pubOff - wh.d) + "일 전" : "배본 " + (wh.d - S.pubOff) + "일 후") + " · " + wh.n
     : "날짜를 고르면 단계가 자동으로 추가돼요";
   document.getElementById("s-pubsub").textContent = s ? "편집 시작 D+" + S.pubOff + " · " + ko(p) : "";
 
@@ -745,7 +728,14 @@ document.getElementById("add-edit").addEventListener("click", function () {
   renderEdit(); stats(); changed();
 });
 document.getElementById("add-group").addEventListener("click", function () {
-  S.promo.push({ t: "", rows: [{ n: "", d: 0, st: "진행", m: "" }] });
+  S.promo.push({ t: "", rows: [{ n: "", url: "", d: 0, st: "진행", m: "" }] });
+  renderPromo(); stats(); changed();
+});
+document.getElementById("add-gonggu").addEventListener("click", function () {
+  S.promo.push({ t: "공구", kind: "gonggu", rows: [
+    { n: "", url: "", d: 7, st: "진행", m: "" },
+    { n: "", url: "", d: 21, st: "진행", m: "" }
+  ]});
   renderPromo(); stats(); changed();
 });
 
