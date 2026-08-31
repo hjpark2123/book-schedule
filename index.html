@@ -217,6 +217,7 @@
   select.st[data-v="예정"] { background: var(--surface-2); color: var(--muted); }
   select.st[data-v="진행"] { background: var(--edit-soft); color: var(--edit); }
   select.st[data-v="완료"] { background: var(--edit-soft); color: var(--ok); }
+  select.st[data-v="확정"] { background: var(--promo-soft); color: var(--promo); }
   select.st[data-v="보류"] { background: var(--promo-soft); color: var(--hold); }
   select.st option { background: var(--surface); color: var(--ink); }
 
@@ -478,17 +479,17 @@ var DEFAULT_STATE = {
   ],
   promo: [
     { t: "SNS", rows: [
-      { n: "서평단 모집 · 발표", d: -14, st: "진행", m: "모집 인원 / 발송일" },
-      { n: "사전 예약 · 출간 알림 이벤트", d: -7, st: "진행", m: "" },
-      { n: "신간 소개 피드 · 릴스 업로드", d: 0, st: "진행", m: "" },
-      { n: "카드뉴스 1차 — 책 소개", d: 7, st: "진행", m: "" },
-      { n: "맘카페 신간 소개 · 댓글 이벤트", d: 14, st: "진행", m: "카페명 · 담당자" },
-      { n: "카드뉴스 2차 — 독후활동 팁", d: 21, st: "진행", m: "" }
+      { n: "서평단 모집 · 발표", d: -14, st: "예정", m: "모집 인원 / 발송일" },
+      { n: "사전 예약 · 출간 알림 이벤트", d: -7, st: "예정", m: "" },
+      { n: "신간 소개 피드 · 릴스 업로드", d: 0, st: "예정", m: "" },
+      { n: "카드뉴스 1차 — 책 소개", d: 7, st: "예정", m: "" },
+      { n: "맘카페 신간 소개 · 댓글 이벤트", d: 14, st: "예정", m: "카페명 · 담당자" },
+      { n: "카드뉴스 2차 — 독후활동 팁", d: 21, st: "예정", m: "" }
     ]},
     { t: "공구", kind: "gonggu", rows: [
-      { n: "", url: "", d: 7, st: "진행", m: "" },
-      { n: "", url: "", d: 21, st: "진행", m: "" },
-      { n: "", url: "", d: 35, st: "진행", m: "" }
+      { n: "", url: "", d: 7, st: "예정", m: "" },
+      { n: "", url: "", d: 21, st: "예정", m: "" },
+      { n: "", url: "", d: 35, st: "예정", m: "" }
     ]}
   ]
 };
@@ -599,12 +600,16 @@ function offCell(row, base) {
   td.dataset.role = "off"; td.dataset.base = base; td._row = row;
   return td;
 }
-function statusCell(row, tr) {
+var ST_EDIT = ["예정","진행","완료"];    // 편집 일정
+var ST_PROMO = ["예정","확정","완료"];   // 홍보 일정
+function statusCell(row, tr, opts) {
   var td = el("td", "c-st"), sel = el("select", "st");
-  ["예정","진행","완료","보류"].forEach(function (v) {
+  var list = (opts || ST_EDIT).slice();
+  if (row.st && list.indexOf(row.st) < 0) list.unshift(row.st);   // 예전에 쓰던 값도 남겨둔다
+  list.forEach(function (v) {
     var o = el("option", null, v); o.value = v; sel.appendChild(o);
   });
-  sel.value = row.st || "진행";
+  sel.value = row.st || list[0];
   sel.dataset.v = sel.value;
   sel.addEventListener("change", function () {
     row.st = sel.value; sel.dataset.v = sel.value;
@@ -676,7 +681,7 @@ function editRow(row) {
   tr.appendChild(lab(textCell(row, "n", "단계 이름", "c-name"), "단계"));
   tr.appendChild(lab(dateCell(row, "start", tr), "완료일"));
   tr.appendChild(lab(offCell(row, "start"), "기준"));
-  tr.appendChild(lab(statusCell(row, tr), "상태"));
+  tr.appendChild(lab(statusCell(row, tr, ST_EDIT), "상태"));
   tr.appendChild(lab(textCell(row, "m", "—", "c-memo"), "메모"));
   tr.appendChild(delCell(function () {
     var i = S.edit.indexOf(row);
@@ -709,7 +714,7 @@ function promoRow(row, list, isG) {
   tr.appendChild(lab(dateCell(row, "pub", tr), isG ? "공구 시작" : "시작일"));
   tr.appendChild(lab(endCell(row, "pub"), isG ? "공구 종료" : "완료일"));
   tr.appendChild(lab(offCell(row, "pub"), "기준"));
-  tr.appendChild(lab(statusCell(row, tr), "상태"));
+  tr.appendChild(lab(statusCell(row, tr, ST_PROMO), "상태"));
   tr.appendChild(lab(textCell(row, "m", isG ? "수량 · 조건 등" : "—", "c-memo"), "메모"));
   if (!isG) tr.appendChild(lab(linkCell(row), "링크"));         // 나머지는 메모 뒤에
   tr.appendChild(delCell(function () {
@@ -808,7 +813,7 @@ function renderPromo() {
     ab.addEventListener("click", function () {
       var last = g.rows[g.rows.length - 1];
       var d = last ? last.d + SPAN : 0;
-      g.rows.push({ n: "", url: "", d: d, st: "진행", m: "" });
+      g.rows.push({ n: "", url: "", d: d, st: "예정", m: "" });
       renderPromo(); stats(); changed();
     });
     rf.appendChild(ab);
@@ -952,13 +957,13 @@ document.getElementById("sort-edit").addEventListener("click", function () {
   renderEdit(); stats(); changed();
 });
 document.getElementById("add-group").addEventListener("click", function () {
-  S.promo.push({ t: "", rows: [{ n: "", url: "", d: 0, st: "진행", m: "" }] });
+  S.promo.push({ t: "", rows: [{ n: "", url: "", d: 0, st: "예정", m: "" }] });
   renderPromo(); stats(); changed();
 });
 document.getElementById("add-gonggu").addEventListener("click", function () {
   S.promo.push({ t: "공구", kind: "gonggu", rows: [
-    { n: "", url: "", d: 7, st: "진행", m: "" },
-    { n: "", url: "", d: 21, st: "진행", m: "" }
+    { n: "", url: "", d: 7, st: "예정", m: "" },
+    { n: "", url: "", d: 21, st: "예정", m: "" }
   ]});
   renderPromo(); stats(); changed();
 });
@@ -1381,6 +1386,6 @@ renderCalendar();
   }
 })();
 </script>
-<!-- rev: 2026-08-28 모바일 정리 -->
+<!-- rev: 2026-08-31 상태 항목 분리 -->
 </body>
 </html>
