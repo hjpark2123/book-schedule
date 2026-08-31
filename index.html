@@ -408,11 +408,11 @@
   </section>
 
   <section class="sec-edit">
-    <div class="sec-head"><span class="dot"></span><h2>편집 일정</h2><span class="basis">편집 시작일 기준</span></div>
+    <div class="sec-head"><span class="dot"></span><h2>편집 일정</h2><span class="basis">편집 완료일 기준</span></div>
     <div class="tablewrap">
       <table>
         <thead><tr>
-          <th class="c-drag"></th><th class="c-name">단계</th><th class="c-date">완료일</th><th class="c-off">기준</th>
+          <th class="c-drag"></th><th class="c-name">단계</th><th class="c-date">완료일</th><th class="c-off">완료일 기준</th>
           <th class="c-st">상태</th><th class="c-memo">메모</th><th class="c-x"></th>
         </tr></thead>
         <tbody id="tb-edit"></tbody>
@@ -551,7 +551,13 @@ function okRowOf(list) {                  // 인쇄 넘김(편집 완료) 단계
 function whRowStrict() { return whRowOf(S.edit); }
 function okRow() { return okRowOf(S.edit); }
 function whRow() { return whRowOf(S.edit); }
-function offText(base, n) { return (base === "pub" ? "배본 D" : "D") + (n >= 0 ? "+" : "") + n; }
+function okOffset() { var r = okRow(); return r ? r.d : 0; }   // 편집 완료일(= OK교) 위치
+function offText(base, n, row) {
+  if (base === "pub") return "배본 D" + (n >= 0 ? "+" : "") + n;
+  if (row && row === okRow()) return "편집 완료일";               // 기준이 되는 그 단계
+  var k = n - okOffset();                                        // 편집 일정은 편집 완료일 기준
+  return "완료 D" + (k >= 0 ? "+" : "") + k;
+}
 function allRows() {
   var out = S.edit.slice();
   S.promo.forEach(function (g) { out = out.concat(g.rows || []); });
@@ -585,7 +591,9 @@ function dateCell(row, base, tr) {
     var b = baseDate(base), picked = parse(i.value);
     if (!b || !picked) { syncRow(tr); return; }
     row.d = diff(picked, b);
-    syncRow(tr); timeline(); changed();
+    if (base === "start") syncAll();   // 편집 완료일이 옮겨지면 다른 단계의 D값도 다시 계산
+    else syncRow(tr);
+    stats(); timeline(); changed();
   });
   td.appendChild(i);
   return td;
@@ -680,7 +688,7 @@ function editRow(row) {
   tr.appendChild(dragCell(tr, S.edit, function () { return page * PAGE; }, renderEdit));
   tr.appendChild(lab(textCell(row, "n", "단계 이름", "c-name"), "단계"));
   tr.appendChild(lab(dateCell(row, "start", tr), "완료일"));
-  tr.appendChild(lab(offCell(row, "start"), "기준"));
+  tr.appendChild(lab(offCell(row, "start"), "완료일 기준"));
   tr.appendChild(lab(statusCell(row, tr, ST_EDIT), "상태"));
   tr.appendChild(lab(textCell(row, "m", "—", "c-memo"), "메모"));
   tr.appendChild(delCell(function () {
@@ -731,7 +739,7 @@ function syncRow(tr) {
   var ec = tr.querySelector('[data-role="end"]');
   if (ec) { var eb = baseDate(ec.dataset.base); ec.textContent = eb ? ko(add(eb, ec._row.d + SPAN)) : "—"; }
   var oc = tr.querySelector('[data-role="off"]');
-  if (oc) oc.textContent = offText(oc.dataset.base, oc._row.d);
+  if (oc) oc.textContent = offText(oc.dataset.base, oc._row.d, oc._row);
 }
 function syncAll() { document.querySelectorAll("tbody tr").forEach(syncRow); }
 
@@ -1386,6 +1394,6 @@ renderCalendar();
   }
 })();
 </script>
-<!-- rev: 2026-08-31 상태 항목 분리 -->
+<!-- rev: 2026-08-31 편집 D-day 기준 변경 -->
 </body>
 </html>
