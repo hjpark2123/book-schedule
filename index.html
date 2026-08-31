@@ -107,18 +107,22 @@
   .tl-legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
   .tl-legend .l-edit::before { background: var(--edit); }
   .tl-legend .l-promo::before { background: var(--promo); }
-  .tl-body { position: relative; }
+  .tl-body { position: relative; padding-top: 16px; }   /* 기준선 이름이 들어갈 자리 */
   .tl-grid { position: absolute; inset: 0; pointer-events: none; }
-  .tl-tick { position: absolute; top: 0; bottom: 18px; border-left: 1px solid var(--line); }
+  .tl-tick { position: absolute; top: 16px; bottom: 18px; border-left: 1px solid var(--line); }
   .tl-tick b { position: absolute; bottom: -17px; left: 4px; font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-  .tl-today { position: absolute; top: -2px; bottom: 16px; border-left: 2px solid var(--promo); }
-  .tl-today b { position: absolute; top: -6px; left: 4px; font-size: 10.5px; font-weight: 600; color: var(--promo); background: var(--surface); padding: 0 3px; }
+  .tl-today { position: absolute; top: 14px; bottom: 16px; border-left: 2px solid var(--promo); }
+  .tl-today b { position: absolute; top: -17px; left: 4px; font-size: 10.5px; font-weight: 600; color: var(--promo); background: var(--surface); padding: 0 3px;white-space: nowrap; }
   .tl-lane { position: relative; height: 26px; margin-bottom: 8px; }
   .tl-lane:last-of-type { margin-bottom: 22px; }
   .tl-bar { position: absolute; top: 4px; height: 18px; border-radius: 4px; display: flex; align-items: center; padding: 0 8px; font-size: 11.5px; font-weight: 600; color: var(--on-accent); overflow: hidden; white-space: nowrap; }
   .tl-bar.edit { background: var(--edit); }
   .tl-bar.promo { background: var(--promo); }
-  .tl-pub { position: absolute; top: -4px; bottom: 16px; border-left: 2px dashed var(--edit); }
+  .tl-mark { position: absolute; top: 14px; bottom: 16px; border-left: 2px dashed var(--edit); }
+  .tl-mark b { position: absolute; top: -17px; left: 4px; font-size: 10.5px; font-weight: 600; color: var(--edit); background: var(--surface); padding: 0 3px; white-space: nowrap; }
+  .tl-mark.wh b { right: 4px; left: auto; }                 /* 라벨이 서로 겹치지 않게 바깥쪽으로 */
+  .tl-mark.pub { border-left-color: var(--promo); }
+  .tl-mark.pub b { color: var(--promo); left: 4px; }
   .tl-empty { font-size: 13px; color: var(--muted); padding: 6px 0 10px; }
 
   .cal-nav { margin-left: auto; display: flex; align-items: center; gap: 6px; }
@@ -356,7 +360,7 @@
 
   <div class="keys">
     <div class="key edit">
-      <span class="k">편집 시작일 (기준일)</span>
+      <span class="k">편집 시작일</span>
       <input id="f-start" type="date">
       <span class="sub" id="s-startday"></span>
     </div>
@@ -845,7 +849,7 @@ function stats() {
   document.getElementById("s-whsub").textContent = (wh && s)
     ? (wh.d === S.pubOff ? "배본일과 같은 날" : wh.d < S.pubOff ? "배본 " + (S.pubOff - wh.d) + "일 전" : "배본 " + (wh.d - S.pubOff) + "일 후") + " · " + wh.n
     : "날짜를 고르면 단계가 자동으로 추가돼요";
-  document.getElementById("s-pubsub").textContent = s ? "편집 시작 D+" + S.pubOff + " · " + ko(p) : "";
+  document.getElementById("s-pubsub").textContent = (s && wh) ? "창고 입고 " + (S.pubOff - wh.d >= 0 ? S.pubOff - wh.d + "일 후" : (wh.d - S.pubOff) + "일 전") + " · " + ko(p) : (s ? ko(p) : "");
 
   var rows = allRows();
   var done = rows.filter(function (r) { return r.st === "완료"; }).length;
@@ -880,7 +884,9 @@ function timeline() {
   });
   var promoStart = has ? add(p, pMin) : p, promoEnd = has ? add(p, pMax) : p;
   var lo = new Date(Math.min(s.getTime(), promoStart.getTime()));
-  var hi = new Date(Math.max(editEnd.getTime(), promoEnd.getTime(), p.getTime()));
+  var whRef = whRow();
+  var whAt = whRef ? add(s, whRef.d) : null;
+  var hi = new Date(Math.max(editEnd.getTime(), promoEnd.getTime(), p.getTime(), whAt ? whAt.getTime() : 0));
   var span = Math.max(1, diff(hi, lo));
   function pos(d) { return (diff(d, lo) / span) * 100; }
 
@@ -893,7 +899,13 @@ function timeline() {
     grid.appendChild(t);
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
   }
-  var pd = el("div", "tl-pub"); pd.style.left = pos(p) + "%"; grid.appendChild(pd);
+  var whr = whRow(), whd = whr ? add(s, whr.d) : null;
+  if (whd) {                                        // 전체 흐름의 기준선 = 창고 입고일
+    var wl = el("div", "tl-mark wh"); wl.style.left = pos(whd) + "%";
+    wl.appendChild(el("b", null, "창고 입고")); grid.appendChild(wl);
+  }
+  var pd = el("div", "tl-mark pub"); pd.style.left = pos(p) + "%";
+  pd.appendChild(el("b", null, "배본")); grid.appendChild(pd);
   var now = new Date(); now = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (now >= lo && now <= hi) {
     var td = el("div", "tl-today"); td.style.left = pos(now) + "%";
@@ -920,9 +932,18 @@ var fWh = document.getElementById("f-wh");
 var fPub = document.getElementById("f-pub");
 
 fTitle.addEventListener("input", function () { S.title = fTitle.value; changed(); });
-fStart.addEventListener("change", function () {
+fStart.addEventListener("change", function () {   // 시작일만 바뀐다 — 나머지 날짜는 제자리
   if (!fStart.value) { fStart.value = S.start; return; }
-  S.start = fStart.value; syncAll(); stats(); changed();
+  var before = startDate(), after = parse(fStart.value);
+  if (before && after) {
+    var shift = diff(after, before);              // 옮긴 만큼 각 단계의 D값을 되돌려 실제 날짜를 붙잡아둔다
+    if (shift) {
+      S.edit.forEach(function (r) { r.d -= shift; });
+      S.pubOff -= shift;
+    }
+  }
+  S.start = fStart.value;
+  renderEdit(); syncAll(); stats(); changed();
 });
 fOk.addEventListener("change", function () {   // 이 단계 날짜만 바뀐다
   var s = startDate(), ok = okRow(), picked = parse(fOk.value);
@@ -1394,6 +1415,6 @@ renderCalendar();
   }
 })();
 </script>
-<!-- rev: 2026-08-31 편집 D-day 기준 변경 -->
+<!-- rev: 2026-08-31 시작일 독립 · 창고 입고 기준선 -->
 </body>
 </html>
