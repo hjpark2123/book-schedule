@@ -100,7 +100,7 @@
   .bar { height: 5px; border-radius: 99px; background: var(--line); overflow: hidden; }
   .bar > i { display: block; height: 100%; background: var(--edit); border-radius: 99px; }
 
-  .timeline { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 14px; box-shadow: var(--shadow); }
+  .timeline { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 14px; box-shadow: var(--shadow); }
   .tl-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
   .tl-head h2 { font-family: var(--serif); font-size: 17px; margin: 0; font-weight: 700; }
   .tl-head { gap: 10px; flex-wrap: wrap; }
@@ -126,6 +126,29 @@
   }
   .tl-dot.done { background: var(--promo); box-shadow: 0 0 0 2px var(--surface); }
   .tl-dot.early { border-style: dashed; opacity: .75; }   /* 창고 입고 전 항목 */
+  .tl-dot::before { content: ""; position: absolute; inset: -9px; }   /* 손가락으로도 눌리게 */
+  .tl-dot:hover, .tl-dot:focus-visible { transform: scale(1.35); outline: none; }
+  .tl-dot.on { transform: scale(1.35); box-shadow: 0 0 0 3px var(--promo-soft); }
+  .tl-dot.many {
+    width: 18px; height: 18px; margin-left: -9px; top: 4px; background: var(--promo);
+    border-color: var(--surface); display: flex; align-items: center; justify-content: center;
+  }
+  .tl-dot.many i { font-style: normal; font-size: 9.5px; font-weight: 700; color: var(--on-accent); }
+
+  .tl-tip {
+    position: absolute; z-index: 20; max-width: 250px; padding: 8px 11px; border-radius: 9px;
+    background: var(--ink); color: var(--ground); font-size: 12px; line-height: 1.45;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .22); pointer-events: none;
+    opacity: 0; visibility: hidden; transition: opacity .12s ease;
+  }
+  .tl-tip.on { opacity: 1; visibility: visible; }
+  .tl-tip .g { display: block; font-size: 11px; opacity: .72; }
+  .tl-tip b { display: block; font-weight: 700; }
+  .tl-tip b.li { font-weight: 600; margin-top: 3px; }
+  .tl-tip .d { display: block; font-size: 11px; opacity: .88; margin-top: 3px; }
+  .tl-tip::after { content: ""; position: absolute; left: var(--ax, 50%); margin-left: -6px; border: 6px solid transparent; }
+  .tl-tip.up::after { top: 100%; border-top-color: var(--ink); }
+  .tl-tip.down::after { bottom: 100%; border-bottom-color: var(--ink); }
   .tl-mark { position: absolute; top: 32px; bottom: 20px; border-left: 2px dashed var(--edit); }
   .tl-lane .tl-empty { padding: 4px 0; }
   .tl-mark b { position: absolute; top: -17px; left: 4px; left: 4px; font-size: 10.5px; font-weight: 600; color: var(--edit); background: var(--surface); padding: 0 3px; white-space: nowrap; }
@@ -403,6 +426,7 @@
       <div class="tl-legend"><span class="l-promo">홍보 일정</span><span class="l-wh">창고 입고</span><span class="l-pub">배본</span></div>
     </div>
     <div class="tl-body" id="tl"></div>
+    <div class="tl-tip" id="tl-tip" role="status" aria-live="polite"></div>
   </div>
 
   <section class="cal-sec">
@@ -878,11 +902,62 @@ function refreshKeys() {
   fWh.value = (s && wh) ? iso(add(s, wh.d)) : "";
   fPub.value = s ? iso(pubDate()) : "";
 }
+var touch = false, pinned = null;
+try { touch = window.matchMedia("(hover: none)").matches; } catch (e) {}
+function hideTip() {
+  var tip = document.getElementById("tl-tip");
+  if (tip) tip.classList.remove("on");
+  if (pinned) pinned.classList.remove("on");
+  pinned = null;
+}
+function showTip(dot, bk) {
+  var tip = document.getElementById("tl-tip"), card = document.querySelector(".timeline");
+  if (!tip || !card) return;
+  document.querySelectorAll(".tl-dot.on").forEach(function (d) { d.classList.remove("on"); });
+  dot.classList.add("on");
+  tip.textContent = "";
+  var list = bk.items, head = (bk.early ? "창고 입고 전 · " : "") + ko(bk.at);
+  if (list.length === 1) {
+    var m = list[0];
+    tip.appendChild(el("span", "g", m.g + (bk.early ? " · 창고 입고 전" : "")));
+    tip.appendChild(el("b", null, m.n || "(이름 없음)"));
+    tip.appendChild(el("span", "d", ko(m.at) + " → " + ko(m.end) + (m.st ? " · " + m.st : "")));
+  } else {
+    tip.appendChild(el("span", "g", head + " · " + list.length + "건"));
+    list.slice(0, 6).forEach(function (m) {
+      tip.appendChild(el("b", "li", m.g + " · " + (m.n || "(이름 없음)")
+        + (bk.early ? " (" + ko(m.at) + ")" : "") + (m.st ? " — " + m.st : "")));
+    });
+    if (list.length > 6) tip.appendChild(el("span", "d", "외 " + (list.length - 6) + "건"));
+  }
+  tip.classList.add("on");
+  tip.style.left = "0px"; tip.style.top = "0px";
+  tip.classList.remove("up", "down");
+
+  var cb = card.getBoundingClientRect(), db = dot.getBoundingClientRect();
+  var cx = db.left + db.width / 2 - cb.left;
+  var w = tip.offsetWidth, h = tip.offsetHeight;
+  var x = Math.min(Math.max(cx - w / 2, 6), Math.max(6, cb.width - w - 6));
+  var above = db.top - cb.top - h - 10;
+  var y = above >= 4 ? above : db.bottom - cb.top + 10;
+  tip.classList.add(above >= 4 ? "up" : "down");
+  tip.style.left = x + "px";
+  tip.style.top = y + "px";
+  tip.style.setProperty("--ax", (cx - x) + "px");
+}
+document.addEventListener("click", function (e) {
+  var t = e.target;
+  if (!t || !t.closest || !t.closest(".tl-dot")) hideTip();
+});
+window.addEventListener("resize", hideTip);
+window.addEventListener("scroll", hideTip, true);
+
 function timeline() {
   var host = document.getElementById("tl");
   host.textContent = "";
   var s = startDate(), p = pubDate();
   var whr = whRow(), whd = (s && whr) ? add(s, whr.d) : null;
+  hideTip();
   var sum0 = document.getElementById("tl-sum"); if (sum0) sum0.textContent = "";
   if (!whd) { host.appendChild(el("div", "tl-empty", "창고 입고 예정일을 정하면 전체 흐름이 그려집니다.")); return; }
 
@@ -938,11 +1013,34 @@ function timeline() {
     bar.style.left = pos(a) + "%";
     bar.style.width = Math.max(2, pos(b) - pos(a)) + "%";
     lane.appendChild(bar);
-    marks.forEach(function (m) {                    // 항목별 마크
-      var early = m.at < floorAt;
-      var dot = el("div", "tl-dot" + (m.st === "완료" ? " done" : "") + (early ? " early" : ""));
-      dot.style.left = pos(early ? floorAt : m.at) + "%";
-      dot.title = (early ? "창고 입고 전 · " : "") + m.g + " · " + m.n + " · " + ko(m.at) + (m.st ? " (" + m.st + ")" : "");
+    var buckets = [], byKey = {};                   // 같은 날짜(또는 같은 자리)는 점 하나로 묶는다
+    marks.forEach(function (m) {
+      m.early = m.at < floorAt;
+      var at = m.early ? floorAt : m.at;
+      var key = m.early ? "early" : iso(at);
+      if (!byKey[key]) { byKey[key] = { at: at, early: m.early, items: [] }; buckets.push(byKey[key]); }
+      byKey[key].items.push(m);
+    });
+    buckets.forEach(function (bk) {
+      var allDone = bk.items.every(function (m) { return m.st === "완료"; });
+      var dot = el("div", "tl-dot" + (allDone ? " done" : "") + (bk.early ? " early" : "")
+                        + (bk.items.length > 1 ? " many" : ""));
+      if (bk.items.length > 1) dot.appendChild(el("i", null, String(bk.items.length)));
+      dot.style.left = pos(bk.at) + "%";
+      dot.tabIndex = 0;
+      dot.setAttribute("role", "button");
+      dot.setAttribute("aria-label", bk.items.length > 1
+        ? ko(bk.at) + " " + bk.items.length + "건"
+        : bk.items[0].g + " " + bk.items[0].n);
+      dot.addEventListener("pointerenter", function () { if (!touch) showTip(dot, bk); });
+      dot.addEventListener("pointerleave", function () { if (!touch && pinned !== dot) hideTip(); });
+      dot.addEventListener("focus", function () { showTip(dot, bk); });
+      dot.addEventListener("blur", function () { if (pinned !== dot) hideTip(); });
+      dot.addEventListener("click", function (e) {          // 눌러서 고정 / 다시 눌러 닫기
+        e.stopPropagation();
+        if (pinned === dot) { hideTip(); return; }
+        pinned = dot; showTip(dot, bk);
+      });
       lane.appendChild(dot);
     });
     sum.textContent = "창고 입고 " + ko(whd) + " · 홍보 " + (diff(b, a) + 1) + "일 · " + marks.length + "건";
@@ -1448,6 +1546,6 @@ renderCalendar();
   }
 })();
 </script>
-<!-- rev: 2026-08-31 흐름 = 창고 입고 기준 · 홍보 마크 -->
+<!-- rev: 2026-09-01 마크 말풍선 -->
 </body>
 </html>
